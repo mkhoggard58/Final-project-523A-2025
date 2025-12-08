@@ -1,0 +1,450 @@
+---
+title: "Final_project"
+author: "Makayla Hoggard"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
+```
+
+# Final Project {.tabset .tabset-fade .tabset-pills}
+
+For my final project I decided it would be handy for me to have a document that had all the necessary code I have done over the semester so that I can have it for future reference. So, starting out with... drum roll please.... **exploratory_data_analysis!**
+
+```{r}
+suppressPackageStartupMessages(source("setup.R"))
+```
+
+## **Module 1: Exploratory Data Analysis** {.tabset .tabset-fade}
+
+7.  Create a figure that allows you to visualize some comparison of your choice among the `penguins` data set. Below your figure write a testable hypothesis about the data and the patterns you see from this figure.
+
+now lets load in the data and play with it and clean it up!
+
+```{r}
+data("penguins")
+
+penguins_mod <- mutate(penguins, animal = "penguins",
+                       bill_length_cm = bill_length_mm/10, 
+                       bill_depth_cm = bill_depth_mm/10, 
+                       flipper_length_cm = flipper_length_mm/10)
+penguins_mod <- select(penguins_mod, -c(bill_length_mm, bill_depth_mm, flipper_length_mm))
+adelie <- filter(penguins_mod, species  == "Adelie")
+
+#piping instead 
+adelie <- penguins %>%
+  mutate(bill_length_cm = bill_length_mm/10, 
+         bill_depth_cm = bill_depth_mm/10, 
+         flipper_length_cm = flipper_length_mm/10) %>% 
+  select(-c(bill_length_mm, bill_depth_mm, flipper_length_mm)) %>%
+  filter(species == "Adelie")
+```
+
+we want to see who has the largest flipper length lets first summarise with group_by() and summarise() grouped all data by average using species:
+
+```{r}
+avg_bill <- penguins %>% 
+  group_by(species , sex) %>%
+  summarise(mean_bill_length = mean(bill_length_mm, na.rm = TRUE) , mean_flipper_length = mean(flipper_length_mm, na.rm = TRUE))
+```
+
+the lines of code dont work because 1.) we need to use the c(function) 2.) you need to make sure you load penguins, 3.)
+
+```{r}
+penguins[1:5, c("species", "island")]
+
+ penguins$flipper_length_mm
+ 
+ penguins[penguins$island=='Dream',]
+```
+
+what has the largest flipper length?
+
+```{r}
+penguins%>%
+  group_by(species) %>%
+  summarise(mean_flipper_length = mean(flipper_length_mm, na.rm= TRUE))
+```
+
+what about which species is found on all three islands?
+
+```{r}
+species_penguins <- penguins %>%
+  distinct(species, island) 
+reordered_penguins <- penguins %>%
+  select(year, everything())
+penguins %>%
+  mutate(size_group = if_else( condition = body_mass_g > 4202, 
+                        true = "large",
+                        false = "small"))
+```
+
+lets see visually who has the highest bodymass
+
+```{r warning=FALSE}
+ggplot(penguins) +
+  geom_histogram(aes(x= body_mass_g, fill= species))
+```
+
+Yayy!!! We played with a large dataset and looked at some visuals and statistics... now whats next?
+
+## Module 2: Plotting!!! {.tabset .tabset-fade}
+
+Now something fun we can do is make a really pretty plot and a really UGLY plot. Here are mine!
+
+```{r warning=FALSE}
+
+penguins_raw %>%
+  ggplot(aes(x=`Flipper Length (mm)`, y= `Body Mass (g)`))+ 
+  geom_point(aes(size = `Date Egg`, color = `Date Egg`)) +
+  labs(title = "Penguin's Flipper Length vs. Body Mass" ,
+       x = "Flipper Length (mm)" ,
+       y = "Body Mass (g)",
+       caption = "Flippers!!! yay!!!") +
+  guides(color = guide_legend(title = "Date of Egg"), size = guide_legend( title = "Date of Egg") )+ 
+  theme(
+    axis.title = element_text( face = "bold", size = 15),
+    legend.position = "bottom",
+    title = element_text(face = "bold", size = 20), 
+    plot.caption = element_text(face = "italic", size = 10 )
+  ) 
+```
+
+```{r}
+attack_data <- read.csv("data/attacks.csv")
+```
+
+```{r warning=FALSE}
+attack_data %>%
+ggplot(mapping = aes(x = Country)) +
+  geom_bar(mapping = aes(size = 3, color = "green")) +
+  ylim(c(0,600))+
+  ggtitle("guys do not touch the sharks") +
+  labs(
+    x= "so many countries",
+    y = "bruh why are there more than 500 attacks bffr",
+    caption = "i am not trying to judge but I am bc how are there so many!! 
+    
+    yall im never going into the water EVER again !!!!  oh yall cant see it bc of all the countries, mb"
+  )+
+  theme(
+    plot.title = element_text(size = 36 , color = "Orange"),
+    axis.title.x = element_text(size = 25 , color = "yellow"),
+    axis.title.y = element_text(size = 25, color = "red"),
+    panel.grid.major = element_line(color = "blue"),
+    axis.text.x = element_text(angle = 70))
+```
+
+I think these plots are pretty good... next up more statstical analysis
+
+## Module 3) T-Test and ANOVA {.tabset .tabset-fade}
+
+A t-test is used to find equal variance in a data set we can use a statistical analysis to see this.
+
+Conduct a t-test similar to the one we carried out earlier in this lesson plan, but test for a difference in snout-vent length (`length_1_mm`) between forest types (`section`) for the *Coastal giant salamander*.
+
+first lets clean up a data set
+
+```{r}
+suppressPackageStartupMessages(library(lterdatasampler))
+data("and_vertebrates")
+salamander <- and_vertebrates %>%
+  filter(species == "Coastal giant salamander") %>%
+  drop_na(length_1_mm)
+```
+
+plot it to find variation!
+
+```{r}
+
+salamander %>% 
+  ggplot(aes(x = section, y = length_1_mm)) +   
+  geom_boxplot()
+```
+
+the plot shows some variance but lets test it anyways
+
+```{r warning=FALSE}
+library(rstatix)
+salamander %>% 
+  levene_test(length_1_mm ~ section)
+```
+
+```{r}
+hist(salamander$length_1_mm)
+```
+
+so there is def variation
+
+has a bell curve but we know there is not equal variance lets see if we can meet assumptions using sqrt
+
+```{r warning=FALSE}
+salamander %>%
+   levene_test(sqrt(length_1_mm) ~ section)
+```
+
+Bingo!!
+
+```{r}
+salamander %>% 
+  mutate(length_1_mm_sqrt = sqrt(length_1_mm)) %>% 
+  t_test(length_1_mm_sqrt ~ section, var.equal = TRUE, detailed = TRUE)
+```
+
+with this can assume that the Coastal giant salamander is observed more in old growth forests rather than in clear cut forests.
+
+Now on to ANOVA tests!
+
+Conduct an ANOVA test to test for differences in snout-vent length between channel types (`unittype`, only using C, P, and SC channel types) for the *Coastal Giant salamander*. Remember to check your test assumptions and use the appropriate test based on your findings. You must also conduct the associated post-hoc test and report which groups are significantly different from each other, if any.
+
+```{r}
+salamander_cc <- salamander %>% 
+  filter(section == "CC") 
+
+salamander_cc %>%
+  group_by(unittype) %>%
+  count()
+```
+
+```{r}
+salamander_cc <- salamander_cc %>%
+  drop_na(unittype) %>%
+  filter(unittype %in% c("C", "P", "SC"))
+salamander_cc %>%
+  group_by(unittype) %>%
+  shapiro_test(length_1_mm)
+```
+
+we can say that there is not even distrubution
+
+```{r}
+salamander_cc %>% 
+  kruskal_test(length_1_mm ~ unittype)
+```
+
+they do not have equal variance
+
+```{r}
+salamander_cc %>% 
+  ggplot(aes(x = unittype, y = length_1_mm, color = unittype)) + 
+  geom_boxplot()
+
+```
+
+```{r}
+salamander_cc %>% 
+  ggplot(aes(x = length_1_mm)) + 
+  geom_histogram()+ 
+  facet_wrap(~unittype, ncol = 1)
+salamander_cc %>%
+  dunn_test(length_1_mm ~ unittype)
+```
+
+I would say after looking at the histogram and the dunn test, the length of the snout in costal giant salamander is not evenly distributed through the different channel types. I would reject ANOVA’s nul hypothesis.
+
+## Module 4.) Correlation and Simple Linear Regression {.tabset .tabset-fade}
+
+```{r}
+library(plotly)
+```
+
+Correlation measures the strength and direction of a relationship between **two continuous variables**.The key result of a correlation test, the correlation coefficient (*r*), ranges from -1 to +1, with 0 indicating no linear relationship, -1 a perfect negative relationship and 1 indicating a perfect positive relationship.
+
+```{r}
+data("and_vertebrates")
+
+sal <- and_vertebrates %>% 
+  # find observations that contain the string "salamander" in the species column:
+  filter(str_detect(species, "salamander")) %>%
+  drop_na(length_2_mm, weight_g)
+
+ggplot(sal) + 
+  geom_point(aes(x = length_2_mm, y = weight_g), color = "black") +
+  theme_bw()
+```
+
+In other words, a salamander’s weight and length seem to be **positively correlated:** as length increases, weight also increases, and vice versa.
+
+we will be using the `ntl_airtemp` and `ntl_icecover` data sets to explore the relationship between mean annual lake ice duration and mean winter air temperature at two nearby lakes in Wisconsin. `ntl_airtemp` contains daily estimates of the air temperature near the two lakes. `ntl_icecover` contains the duration of ice cover per year, per lake.
+
+```{r}
+data("ntl_airtemp")
+data("ntl_icecover")
+#average lake ice duration over years 
+avg_icecover <- ntl_icecover %>%
+  # mutate within group by, and create a new variable for the WATER year (Oct - Sept). Water year is the FUTURE year so we do year + 1
+  group_by(wyear = year + 1) %>%
+  summarize(mean_duration = mean(ice_duration, na.rm = TRUE))
+```
+
+Next, we will need to compute the mean winter (November-April) air temperature per *water year* to align with the data in `avg_icecover`. A *water year* is a 12-month period starting in October and ending in September, aligning with the winter season and thereby not splitting up the winter.
+
+Let’s first define each date’s water year using an `if_else()` statement and the `month()` function from the {lubridate} package:
+
+```{r}
+avg_icecover <- ntl_icecover %>%
+  # mutate within group by, and create a new variable for the WATER year (Oct - Sept). Water year is the FUTURE year so we do year + 1
+  group_by(wyear = year + 1) %>%
+  summarize(mean_duration = mean(ice_duration, na.rm = TRUE))
+```
+
+Next, using `ntl_airtemp_wyear`, we can compute the average air temperature for the winter season per water year.
+
+```{r}
+ntl_airtemp_wyear <- ntl_airtemp %>%
+  mutate(wyear = if_else(month(sampledate) < 10, year, year+1))
+ntl_winter_airtemp <- ntl_airtemp_wyear %>%
+  filter(lubridate::month(sampledate) %in% c(11, 12, 1:4)) %>% # filter the months from Nov to April
+  group_by(wyear) %>%
+  summarize(mean_air_temp = mean(ave_air_temp_adjusted))
+
+```
+
+Join your table of (water-)yearly average winter temperatures to our avg_icecover object. Save this new table as icecover_temp. (HINT: use a join() function to do this.
+
+```{r}
+icecover_temp <- inner_join(ntl_winter_airtemp, avg_icecover, by= "wyear", "ice_duration")
+```
+
+Visualize the data by plotting our variables against one another, and using histograms. Is their relationship linear? Are our variables normally distributed?
+
+```{r}
+hist(icecover_temp$mean_air_temp)
+```
+
+```{r}
+hist(icecover_temp$mean_duration)
+```
+
+```{r}
+shapiro.test(icecover_temp$mean_air_temp)
+```
+
+```{r}
+shapiro_test(icecover_temp$mean_duration)
+```
+
+visualizing - the relationship is linear the distrabution is not normaly distributed because the p value for mean duration is less than 0.05.
+
+Perform a correlation test on icecover_temp to see whether there is a significant relationship between mean ice duration and mean air temperature. If so, is the relationship positive or negative? What is the correlation coefficient?
+
+```{r}
+ggplot(icecover_temp) +
+   geom_point(aes(x = mean_air_temp, y = mean_duration), color = "black") +
+  theme_bw()
+```
+
+```{r}
+cor_test(
+  data = icecover_temp, 
+  vars = c(mean_air_temp, mean_duration),
+  alternative = "two.sided",
+  method = "spearman"
+)
+```
+
+the correlation is negitive. The cor efficent is -0.83
+
+Develop a simple linear model to then predict the mean ice duration when mean winter temperatures are -2 degrees, 0 degrees, and 2 degrees
+
+```{r}
+slr_model <- lm(mean_duration ~ mean_air_temp, data = icecover_temp)
+summary(slr_model)
+```
+
+```{r}
+icecover_temp_pp <- tibble(mean_air_temp = c(-2, 0, 2))
+
+predict(slr_model, newdata = icecover_temp_pp)
+```
+
+Plot the mean air temperature against the mean ice cover duration. Include our simple linear regression (i.e., the line of best fit) in the plot
+
+```{r}
+ggplot(icecover_temp, (aes(x = mean_air_temp, y = mean_duration))) +
+   geom_point(color = "black") +
+   geom_smooth(method = "lm" , se = TRUE) +
+  theme_bw() 
+```
+
+slope = -8.903 intercept = 85.186 residual standard error = 11.43
+
+## Module 5 Multiple Linear Regression {.tabset .tabset-fade}
+
+Multiple linear regression is the most common form of linear regression analysis. As a predictive analysis, multiple linear regression is used to explain the relationship between one continuous dependent variable (or, the response variable) and two or more independent variables (or, the predictor variables). The independent variables can be continuous OR categorical. Unlike a simple linear regression, where we describe the relationship between X and Y (two dimensional) and can simply plot them against each other, we are now working with multiple X’s and Y - which is three-dimensional.
+
+We are interested in developing a multiple linear regression model to predict mean annual stream flow across the Eastern US. For every state, we have a handful of watershed and site characteristic data associated with USGS stream gauging stations.
+
+```{r}
+data_files <- list.files('data/usgs_gages', full.names = TRUE, pattern = "*.csv")
+```
+
+Read in each of the data sets associated with the assignment and combine them into a single data set
+
+```{r results='hide'}
+combine_usgs <- map_dfr(data_files, read_csv)
+```
+
+Using our combined data set, plot mean annual stream flow against each variable to identify variables that seem to have a linear relationship with stream flow.
+
+```{r}
+data(combine_usgs)
+combine_usgs_long <- combine_usgs %>% 
+  select(-c(site_name, state)) %>% 
+   pivot_longer(cols = -annual_streamflow_mm)
+
+ggplot(data = combine_usgs_long, aes(x = annual_streamflow_mm, y = value)) +
+  geom_point(color = "black") + 
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~name, scales = "free_y") + 
+  theme_bw()
+```
+
+regression model using any combination of the variables in the data set. What is your R-squared value? Which of your variables (if any) are significant predictors of stream flow?
+
+```{r}
+mlr_model_usgs <- lm(sqrt(annual_streamflow_mm) ~ median_ws_elevation + mean_aridity_index + mean_winter_temp, data = combine_usgs)
+
+summary(mlr_model_usgs)
+```
+
+R squared = 0.9235. I think the variables that are significant to predicting annual streamflow would be aridity index.I did minipulate the predicted data to try an meet assumptions. I used the square root aor annual streamflow to help with my qq plot and my residuals vs fitted plot.
+
+Check to see if your model meets the model assumptions required for MLR.
+
+```{r}
+combine_usgs %>% 
+  select(median_ws_elevation, mean_aridity_index, mean_winter_temp) %>%
+  cor()
+
+plot(mlr_model_usgs, which = 1)
+plot(mlr_model_usgs, which = 2)
+```
+
+minipulating the predicted data, the plot looks like it fits assumptions except for the two outlires in the top and bottom (44 + 45) but the trend looks okay. The correlation is not above 0.7/-0.7 which makes this model good.
+
+The Q-Q residuals plot looks like it meets assumptions.
+
+Use your model to predict mean annual stream flow for two new sets of predictor data.
+
+```{r}
+mlr_model_usgs <- lm(sqrt(annual_streamflow_mm) ~ mean_aridity_index + mean_winter_temp, data = combine_usgs)
+
+summary(mlr_model_usgs)
+
+reg_usgs <- tibble(annual_streamflow_mm = c(150, 180, 220, 200, 250, 280, 300, 350, 320, 400),
+                   mean_aridity_index = c(120, 150, 180, 160, 210, 240, 260, 300, 280, 350),
+                   mean_winter_temp = c(50, 60, 70, 65, 80, 90, 85, 95, 92, 100))
+
+new_usgs <- data.frame(mean_aridity_index = c(250, 310),
+                       mean_winter_temp =  c(88, 98))
+
+
+predict(mlr_model_usgs, newdata = new_usgs)
+```
+
+You can use sqrt, log, log10 to see if that will meet assumptions.In this case, annual streamflow is the predicter variable so we could mutate annual stream flow to meet assumptions.
+
+## Module 6 Power  {.tabset .tabset-fade}
